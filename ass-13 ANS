@@ -1,0 +1,140 @@
+class DoesNotExist(Exception):
+	pass
+
+class MultipleObjectsReturned(Exception):
+	pass
+
+class InvalidField(Exception):
+	pass
+
+class Student:
+	def __init__(self, name, age, score):
+		self.name = name
+		self.student_id = None
+		self.age = age
+		self.score = score
+	
+	@classmethod
+	def get(cls,**kwargs): 
+		
+		for key,value in kwargs.items():
+			cls.column = key
+			cls.value = value
+	
+		if cls.column not in ('student_id','name','age','score'):
+			raise InvalidField('InvalidField')
+			
+		if cls.column == 'name':#for representing the string name like 'eswar'
+			record = read_data(f"select * from Student where {cls.column} = \'{cls.value}\'")
+		else:
+			record = read_data(f"select * from Student where {cls.column} = {cls.value}")
+		
+		if len(record)==0:
+			raise DoesNotExist('DoesNotExist')
+		elif len(record)>1:
+			raise MultipleObjectsReturned('MultipleObjectsReturned')
+	
+		output = Student(record[0][1],record[0][2],record[0][3])
+		output.student_id = record[0][0]
+		return output
+	
+	@staticmethod
+	def filter(**args):
+		output_1=[]
+		final_outcome = []
+		for k,v in args.items():
+			var = k.split('__')#k anedi age__lt aite split chesaka a lo age,b lo lt untadi 
+			#a,b=k.split('__')
+			
+			if var[0] not in ('student_id','name','age','score'):
+				raise InvalidField
+			if len(var)>1:	
+				if var[1] == 'lt':
+					records =(f"{var[0]} < {v}")
+				elif var[1] == 'lte':
+					records =(f"{var[0]} <= {v}")
+				elif var[1] == 'gt':
+					records = (f"{var[0]} > {v}")
+				elif var[1] == 'gte':
+					records =(f"{var[0]} >= {v}")
+				elif var[1] == 'neq':
+					records =(f"{var[0]} != '{v}'")
+				elif var[1] == 'in':
+					in_condition = tuple(v)
+					records = (f"{var[0]} in {in_condition}")
+				elif var[1] == 'contains':
+					records = (f"{var[0]} LIKE '%{v}%'")
+			elif len(var)==1:
+				records=(f"{var[0]}='{v}'")
+				
+			output_1.append(records)
+				
+			J=' and '.join(output_1)
+				
+		q='select * FROM student WHERE '+J
+		final_query=read_data(q)
+			
+		for i in range(len(final_query)):
+			Z = Student(final_query[i][1],final_query[i][2],final_query[i][3])
+			Z.student_id = final_query[i][0]
+			final_outcome.append(Z)
+
+		return final_outcome
+			
+
+	def save(self):
+		import sqlite3
+		connection = sqlite3.connect("selected_students.sqlite3")
+		crsr = connection.cursor() 
+		crsr.execute("PRAGMA foreign_keys=on;") 
+		if self.student_id == None:
+			crsr.execute(f"insert into Student (name,age,score) values (\'{self.name}\',{self.age},{self.score})")        
+			self.student_id = crsr.lastrowid
+		else:
+			data = read_data(f"select * from  Student Where student_id={self.student_id}")
+			if len(data) != 0:
+				crsr.execute(f"update Student SET name=\'{self.name}\',age={self.age},score={self.score}")
+			else:
+				crsr.execute(f"insert into Student (student_id,name,age,score) values ({self.student_id},\'{self.name}\',{self.age},{self.score})")
+		connection.commit() 
+		connection.close()
+
+	def delete(self):
+		write_data(f"delete from student where student_id={self.student_id}")
+		
+	
+def write_data(sql_query):
+	import sqlite3
+	connection = sqlite3.connect("selected_students.sqlite3")
+	crsr = connection.cursor() 
+	crsr.execute("PRAGMA foreign_keys=on;") 
+	crsr.execute(sql_query) 
+	connection.commit() 
+	connection.close()
+
+def read_data(sql_query):
+	import sqlite3
+	connection = sqlite3.connect("selected_students.sqlite3")
+	crsr = connection.cursor()
+	crsr.execute(sql_query) 
+	ans= crsr.fetchall()  
+	connection.close() 
+	return ans
+	
+	
+
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
